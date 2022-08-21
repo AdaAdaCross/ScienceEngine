@@ -1,3 +1,4 @@
+import pandas
 import pandas as pd
 import numpy as np
 import re
@@ -48,6 +49,14 @@ class DataSet:
         Добавляет колонку к датафрейму
     remove_columns(columns_names, is_index=False)
         Удаляет заданные колонки
+    get_columns(columns_names, type_of_select, is_index=False)
+        Возвращает датафрейм, содержащий выбранные колонки
+    get_value(column_name, row_index)
+        Возвращает значение в указанной ячейке
+    set_value(column_name, row_index, value)
+        Устанавливает значение в указанной ячейке
+    concatenate(dataframes, direction)
+        Присоединяет к исходному датафрейму 1 или несколько датафреймов с заданной стороны
     """
 
     def __init__(self):
@@ -235,3 +244,115 @@ class DataSet:
             self._data_table = self._data_table.drop(columns_names, axis=1)
         else:
             self._data_table = self._data_table.drop(self._data_table.columns[columns_names], axis=1)
+
+    def get_columns(self, columns_names, type_of_select, is_index=False):
+        """
+        Возвращает датафрейм, содержащий выбранные колонки
+        :param columns_names: list
+             Список выбранных названий или индексов колонок
+        :param type_of_select: str
+            Параметр выбора строк из датасета:
+            'include' - вернуть только заданные столбцы,
+            'exclude' - вернуть датасет без заданных столбцы,
+        :param is_index: bool
+            Параметр выбора колонок:
+            True - по индексам,
+            False - по названиям
+        :return: pandas.DataFrame
+            Сформированный контейнер данных датасета на основе data_table
+        """
+        df_res = self._data_table.copy()
+        if type_of_select == 'include':
+            if is_index:
+                df_res = df_res[df_res.columns[columns_names]]
+            else:
+                df_res = df_res[columns_names]
+            return df_res
+        if type_of_select == 'exclude':
+            if is_index:
+                df_res = df_res.drop(df_res.columns[columns_names], axis=1)
+            else:
+                df_res = df_res.drop(columns_names, axis=1)
+            return df_res
+        raise ValueError('Invalid type of select')
+
+    def get_value(self, column_name, row_index):
+        """
+        Возращает значение в указанной ячейке
+        :param column_name: str, int
+            Индекс или название колонки
+        :param row_index: int
+            Индекс строки
+        :return:
+            Значение, хранящееся в ячейке
+        """
+        if type(column_name)==str:
+            return self._data_table.at[row_index, column_name]
+        if type(column_name)==int:
+            return self._data_table.iat[row_index, column_name]
+        raise TypeError('Invalid type of column name')
+
+    def set_value(self, column_name, row_index, value):
+        """
+        Устанавливает значение в указанной ячейке
+        :param column_name: str, int
+            Индекс или название колонки
+        :param row_index: int
+            Индекс строки
+        :param value:
+            Значение ячейки
+        """
+        if type(column_name) == str:
+            self._data_table.at[row_index, column_name] = value
+        elif type(column_name) == int:
+            self._data_table.iat[row_index, column_name] = value
+        else:
+            raise TypeError('Invalid type of column name')
+
+    def concatenate(self, dataframes, direction):
+        """
+        Присоединяет к исходному датафрейму 1 или несколько датафреймов с заданной стороны
+        При несовпадении названий колонок пустые места будут заполнены Nan
+        При пересечении имен колонок при добавлении слева или справа значения из присоединяемых
+        датафреймов будут проигнорированы
+        :param dataframes: list, pandas.DataFrame
+            Датафрейм, который будет присоединен к основному
+        :param direction: str
+            Направление конкатинации относительно основного датафрейма:
+            'left' - dataframes будет присоединен левее относительно основного
+            'right' - dataframes будет присоединен правее относительно основного
+            'up' - dataframes будет присоединен выше относительно основного
+            'down' - dataframes будет присоединен снизу относительно основного
+        """
+        if type(dataframes) == pandas.DataFrame:
+            if direction == 'left':
+                dataframes[self._data_table.columns] = self._data_table.values
+                self._data_table = dataframes
+            elif direction == 'right':
+                self._data_table[dataframes.columns] = dataframes.values
+            elif direction=='up':
+                dataframes = dataframes.append(self._data_table, ignore_index=True)
+                self._data_table = dataframes
+            elif direction == 'down':
+                self._data_table = self._data_table.append(dataframes, ignore_index = True)
+            else:
+                raise ValueError('Invalid direction')
+        elif type(dataframes) == list:
+            if direction == 'left':
+                for dataframe in dataframes:
+                    dataframe[self._data_table.columns] = self._data_table.values
+                    self._data_table = dataframe
+            elif direction == 'right':
+                for dataframe in dataframes:
+                    self._data_table[dataframe.columns] = dataframe.values
+            elif direction=='up':
+                for dataframe in dataframes:
+                    dataframe = dataframe.append(self._data_table, ignore_index=True)
+                    self._data_table = dataframe
+            elif direction == 'down':
+                for dataframe in dataframes:
+                    self._data_table = self._data_table.append(dataframe, ignore_index = True)
+            else:
+                raise ValueError('Invalid direction')
+        else:
+            raise TypeError('Invalid type of dataframes')

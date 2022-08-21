@@ -22,9 +22,16 @@ if __name__ == '__main__':
     ds.init_by_df(data)
     ds.add_row([4, 5, 6])
     ds.add_column('D', [10, 11])
-    ds.remove_columns([0, 2], True)
+    print(ds.get_df())
+
+    data2 = pd.DataFrame([[10, 20], [30, 40]], columns=['X', 'Y'])
+    data3 = pd.DataFrame([[10, 20], [30, 40]], columns=['U', 'Z'])
+
+    list_data = [data2,data3]
+    #ds.set_value(3, 0, 100)
     #ds.load_csv('Z:/sign_dump.csv')
     #df = ds.get_rows('exclude', [0, 1, 2])
+    ds.concatenate(list_data, 'right')
     print(ds.get_df())
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
