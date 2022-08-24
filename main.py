@@ -14,15 +14,19 @@ def print_hi(name):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+
     ds = DataSet()
 
-    colmns = ['A', 'B', 'C']
-    data = pd.DataFrame([[1, 2, 3]], columns=colmns)
+    colmns = ['A', 'B', 'C', '0', '1', '2']
+    str_colmns = " ".join(colmns)
+    #print(str_colmns)
+    data = pd.DataFrame([[1, 2, 3, 1, 2, 3]], columns=colmns)
 
     ds.init_by_df(data)
-    ds.add_row([4, 5, 6])
+    ds.add_row([4, 5, 6, 4, 5, 6])
+    # todo add few columns in row
     ds.add_column('D', [10, 11])
-    print(ds.get_df())
+    #print(ds.get_df())
 
     data2 = pd.DataFrame([[10, 20], [30, 40]], columns=['X', 'Y'])
     data3 = pd.DataFrame([[10, 20], [30, 40]], columns=['U', 'Z'])
@@ -33,5 +37,10 @@ if __name__ == '__main__':
     #df = ds.get_rows('exclude', [0, 1, 2])
     ds.concatenate(list_data, 'right')
     print(ds.get_df())
+    print('_________')
+
+    ds.extend_dataset('A', 3, 0.5, verbose=True)
+    print(ds.get_df())
+    print(ds._generated_indexes)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

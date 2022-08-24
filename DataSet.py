@@ -2,7 +2,9 @@ import pandas
 import pandas as pd
 import numpy as np
 import re
+import random
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import to_categorical
 
 
 class DataSet:
@@ -57,6 +59,8 @@ class DataSet:
         Устанавливает значение в указанной ячейке
     concatenate(dataframes, direction)
         Присоединяет к исходному датафрейму 1 или несколько датафреймов с заданной стороны
+    get_train_data(label_column, data_columns=None, data_shape=None, test_size=0.3, is_onehotenc=True)
+        Возвращает содержимое датасета в виде, готовым для пердачи классификатору на обучение
     """
 
     def __init__(self):
@@ -134,7 +138,7 @@ class DataSet:
             Параметр выбора строк из датасета:
             'include' - вернуть только заданные строки,
             'exclude' - вернуть датасет без заданных строк,
-            'random_\d\d' - вернуть заданный процент случайных строк (от 01 до 99)
+            'random_%d%d' - вернуть заданный процент случайных строк (от 01 до 99)
         :return: pandas.DataFrame
             Сформированный контейнер данных датасета на основе data_table
         """
@@ -286,9 +290,9 @@ class DataSet:
         :return:
             Значение, хранящееся в ячейке
         """
-        if type(column_name)==str:
+        if type(column_name) == str:
             return self._data_table.at[row_index, column_name]
-        if type(column_name)==int:
+        if type(column_name) == int:
             return self._data_table.iat[row_index, column_name]
         raise TypeError('Invalid type of column name')
 
@@ -330,11 +334,11 @@ class DataSet:
                 self._data_table = dataframes
             elif direction == 'right':
                 self._data_table[dataframes.columns] = dataframes.values
-            elif direction=='up':
+            elif direction == 'up':
                 dataframes = dataframes.append(self._data_table, ignore_index=True)
                 self._data_table = dataframes
             elif direction == 'down':
-                self._data_table = self._data_table.append(dataframes, ignore_index = True)
+                self._data_table = self._data_table.append(dataframes, ignore_index=True)
             else:
                 raise ValueError('Invalid direction')
         elif type(dataframes) == list:
@@ -345,14 +349,129 @@ class DataSet:
             elif direction == 'right':
                 for dataframe in dataframes:
                     self._data_table[dataframe.columns] = dataframe.values
-            elif direction=='up':
+            elif direction == 'up':
                 for dataframe in dataframes:
                     dataframe = dataframe.append(self._data_table, ignore_index=True)
                     self._data_table = dataframe
             elif direction == 'down':
                 for dataframe in dataframes:
-                    self._data_table = self._data_table.append(dataframe, ignore_index = True)
+                    self._data_table = self._data_table.append(dataframe, ignore_index=True)
             else:
                 raise ValueError('Invalid direction')
         else:
             raise TypeError('Invalid type of dataframes')
+
+    def get_train_data(self, label_column, data_columns=None, data_shape=None, test_size=0.3, is_onehotenc=True):
+        """
+        Возвращает содержимое датасета в виде, готовым для пердачи классификатору на обучение
+        :param label_column: str
+            Строка, содержащая наименование колонки с идентификаторами
+        :param data_columns: str, list[str], list[int]
+            Контейнер, содержащий в себе описание требуемых для обучения колонок из датасета
+            Если задана как строка - описание в виде реуглярного выражения, которому должны соответствовать
+                заголовки наименований колонок
+            Если как список - содержит список необходимых колонок
+        :param data_shape: list[int], optional
+            Содержит описание кортежа измерений массива NxMx...xZ обучающей и тестовой выборок
+            см. numpy.ndarray.shape
+        :param test_size: float
+            Соотношение X_test к общему размеру датасета
+        :param is_onehotenc: bool, optional
+            Определяет, необходимо ли приводить идентификаторы к OneHotEncoded виду
+        :return: numpy.ndarray[4]
+            Возвращает в указанном порядке:
+            X_train - массив с выборкой для обучения
+            X_test - массив с выборкой для валидации
+            Y_train - массив с идентификаторами X_train
+            Y_test - массив с идентификаторами X_test
+        """
+        res_data = self._data_table.copy()
+        if data_columns is not None:
+            if type(data_columns) == str:
+                list_columns = " ".join(res_data.columns)
+                need_columns = re.findall(data_columns, list_columns)
+                if label_column not in need_columns:
+                    need_columns.append(label_column)
+                res_data = res_data[need_columns]
+            elif type(data_columns) == list:
+                if type(data_columns[0]) == int:
+                    if res_data.columns.get_loc(label_column) not in data_columns:
+                        data_columns.append(res_data.columns.get_loc(label_column))
+                    res_data = res_data[res_data.columns[data_columns]]
+                elif type(data_columns[0]) == str:
+                    if label_column not in data_columns:
+                        data_columns.append(label_column)
+                    res_data = res_data[data_columns]
+                else:
+                    raise TypeError('Invalid type of data_columns list')
+            else:
+                raise TypeError('Invalid type of data_columns')
+        X_train, X_test = train_test_split(res_data, test_size=test_size)
+        Y_train = X_train[label_column]
+        X_train = X_train.drop(columns=label_column)
+        Y_test = X_test[label_column]
+        X_test = X_test.drop(columns=label_column)
+        if is_onehotenc:
+            Y_train = to_categorical(Y_train)
+            Y_test = to_categorical(Y_test)
+        X_train = X_train.to_numpy()
+        X_test = X_test.to_numpy()
+        Y_test = Y_test.to_numpy()
+        Y_train = Y_train.to_numpy()
+        if data_shape is not None:
+            data_shape.insert(0, X_train.shape[0])
+            X_train = X_train.reshape(data_shape)
+            X_test = X_test.reshape(data_shape)
+
+        return X_train, X_test, Y_train, Y_test
+
+    def extend_dataset(self, label_column, rate, eps, type_of_generator='uniform random', verbose=False):
+        """
+        Расширяет датасет за счет генерации новых строк на основе заданных параметров и генератора
+        :param label_column: str
+            Строка, содержащая наименование колонки с идентификаторами
+        :param rate: int
+            Определяет во сколько раз расширить датасет
+        :param eps: float
+            Определяет размер отклонения влево и вправо сгенерированных значений от исходных
+        :param type_of_generator: str
+            Наименование типа генератора.
+            Поддерживаемые генераторы:
+            'uniform random' - случайное равномерное распределение
+        :param verbose: bool, optional
+            Вывод прогресса выполнения операции
+        """
+
+        if type_of_generator != 'uniform random':
+            raise ValueError('Unsupported generator')
+
+        # todo сделать больше генераторов
+
+        res_data = self._data_table.copy()
+        labels_for_data = res_data[label_column]
+        res_data = res_data.drop(columns=label_column)
+        noise_data = []
+        offset = -1
+        new_labels = []
+        generated_index = res_data.shape[0]
+
+        for i in range(res_data.shape[0]):
+            for k in range(rate - 1):
+                noise_data.append([])
+                self._generated_indexes.append(generated_index)
+                generated_index += 1
+                offset += 1
+                new_labels.append(labels_for_data.values[i])
+                for j in range(res_data.shape[1]):
+                    value = res_data.values[i][j]
+                    value = value + (random.uniform(-eps, eps) * value)
+                    noise_data[offset].append(value)
+            if verbose:
+                print("\rExtended", i+1, "out of", res_data.shape[0], "rows", end='')
+        if verbose:
+            print()
+
+        gen_data = pd.DataFrame(data=noise_data, columns=res_data.columns)
+        gen_data[label_column] = new_labels
+        res_data[label_column] = labels_for_data
+        self._data_table = res_data.append(gen_data, ignore_index=True)
