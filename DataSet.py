@@ -61,11 +61,48 @@ class DataSet:
         Присоединяет к исходному датафрейму 1 или несколько датафреймов с заданной стороны
     get_train_data(label_column, data_columns=None, data_shape=None, test_size=0.3, is_onehotenc=True)
         Возвращает содержимое датасета в виде, готовым для пердачи классификатору на обучение
+    extend_dataset(label_column, rate, eps, type_of_generator='uniform random', verbose=False)
+        Расширяет датасет за счет генерации новых строк на основе заданных параметров и генератора
+    get_generated_rows(indexes_only=True)
+        Возращает индексы строк или датасет, которые были сгенерированые функцией extend_dataset
+    replace_values(before, after)
+        Заменяет все значения before на after
+    normalize(label_column, type_of_normalize, direction, columns=None)
+        Нормализует данные исходного датафрейма в соотвествии с параметрами
+    get_info()
+        Выводит информацию о датасете
     """
 
     def __init__(self):
         self._data_table = pd.DataFrame()
         self._generated_indexes = []
+
+    @staticmethod
+    def __normalize_by_type(list_of_data, type_of_normalize):
+        """
+        Private. Нормализирует лист данных по выбранному методу
+        :param list_of_data: list[]
+            Данные для нормализации
+        :param type_of_normalize: str, optional
+            Выбор типа нормализации:
+            'max' - нормализация относительно максимума
+            'linear' - линейная нормализация
+            'statistical' - статистическая нормализация
+        :return: list
+            Возвращает лист нормализованных значений
+        """
+        if type_of_normalize == 'max':
+            norm = [float(i) / max(list_of_data) for i in list_of_data]
+            return norm
+        if type_of_normalize == 'linear':
+            norm = [(float(i) - min(list_of_data)) / (max(list_of_data) - min(list_of_data)) for i in list_of_data]
+            return norm
+        if type_of_normalize == 'statistical':
+            aver = np.mean(list_of_data, axis=0)
+            sigma = np.std(list_of_data, axis=0)
+            norm = [((float(i) - aver) / sigma) for i in list_of_data]
+            return norm
+        raise ValueError('Invalid type of normalize')
 
     def get_df(self):
         """
@@ -475,3 +512,99 @@ class DataSet:
         gen_data[label_column] = new_labels
         res_data[label_column] = labels_for_data
         self._data_table = res_data.append(gen_data, ignore_index=True)
+
+    def get_generated_rows(self, indexes_only=True):
+        """
+        Возращает индексы строк или датасет, которые были сгенерированые функцией extend_dataset
+        :param indexes_only: bool, optional
+            Параметр, отвечающий за вид ответа функции:
+            True - функция вернет лист индексов сгенерированных строк
+            False - функция вернет датафрейм, состоящий из сгенерированных строк
+        :return: list[int], pandas.DataFrame
+            Возвращает индексы строк или датасет, которые были сгенерированы
+        """
+        if indexes_only:
+            return self._generated_indexes
+        else:
+            return self._data_table[self._data_table.index.isin(self._generated_indexes)]
+
+    def replace_values(self, before, after):
+        """
+        Заменяет все значения before на after
+        :param before:
+            Значение, которое необходимо заменить
+        :param after:
+            Значение, на которое необходимо заменить before
+        :return: bool
+            Возвращает True, если хотя бы одно значение было найдено и заменено
+            False, если ни одного совпадения не найдено
+        """
+        if before not in self._data_table.values:
+            return False
+        self._data_table = self._data_table.replace(before, after)
+        return True
+
+    def normalize(self, label_column, type_of_normalize, direction, columns=None):
+        """
+        Нормализует данные исходного датафрейма в соотвествии с параметрами
+        :param label_column: str
+            Строка, содержащая наименование колонки с идентификаторами
+        :param type_of_normalize: str, optional
+            Выбор типа нормализации:
+            'max' - нормализация относительно максимума
+            'linear' - линейная нормализация
+            'statistical' - статистическая нормализация
+        :param direction: str, optional
+            Выбор направления нормализации:
+            'row' - нормализовать по-строчно
+            'column' - нормализовать по столбцам
+        :param columns: str, list[str], list[int]
+            Контейнер, содержащий в себе описание требуемых для обучения колонок из датасета
+            Если задана как строка - описание в виде реуглярного выражения, которому должны соответствовать
+                заголовки наименований колонок
+            Если как список - содержит список необходимых колонок
+        """
+        res_data = self._data_table.copy()
+        res_data = res_data.drop(label_column, axis = 1)
+        if columns is not None:
+            if type(columns) == str:
+                list_columns = " ".join(res_data.columns)
+                need_columns = re.findall(columns, list_columns)
+                res_data = res_data[need_columns]
+            elif type(columns) == list:
+                if type(columns[0]) == int:
+                    res_data = res_data[res_data.columns[columns]]
+                elif type(columns[0]) == str:
+                    res_data = res_data[columns]
+                else:
+                    raise TypeError('Invalid type of columns list')
+            else:
+                raise TypeError('Invalid type of columns')
+        if direction == 'row':
+            for index, row in res_data.iterrows():
+                res_data.iloc[index] = DataSet.__normalize_by_type(row.values, type_of_normalize)
+        elif direction == 'column':
+            for column in res_data:
+                res_data[column] = DataSet.__normalize_by_type(res_data[column].values, type_of_normalize)
+        else:
+            raise ValueError('Invalid direction')
+        for column in res_data.columns:
+            self._data_table[column] = res_data[column]
+
+    def get_info(self):
+        """
+        Выводит информацию о датасете
+        :return: str
+            Возвращает строку с информацией о данных
+        """
+        info_str = 'Dataset info:\n1) shape ' + str(self._data_table.shape) + '\n'
+        info_str += '2) number of generated rows ' + str(len(self._generated_indexes)) + '\n'
+        info_str += '3) types of values in columns:\n'
+        for column in self._data_table.columns:
+            info_str += '\t' + column + ' : ' + str(type(self._data_table[column].values[0]))
+            if np.isnan(self._data_table[column].values).any():
+                info_str += ' (contains NaN)'
+            info_str += '\n'
+        print(info_str)
+        return info_str
+        # todo сохранять матрицу с наименованиями нормализаций для каждой ячейки
