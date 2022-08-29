@@ -11,11 +11,12 @@ from Signatures import Signatures
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     ds = Signatures()
-    ds.load_csv('Z:/ds.csv')
-    ds.normalize('user_id', 'envelopes_2', 'column', r'\w+_diff\d_\w+_\d')
-    #ds.generate_from_database('localhost', 'root', '192837465564738291yashka', 8, 'Fourier', True)
+    ds.load_csv('Z:/ds_16.csv', num_of_harms=16)
+    #ds.normalize('user_id', 'envelopes_2', 'column', r'\w+_diff\d_\w+_\d')
+    #ds.generate_from_database('localhost', 'root', '192837465564738291yashka', 16, 'Fourier', True)
     print(ds.get_df())
-    ds.save_csv('Z:/env_ds.csv')
+    #ds.save_csv('Z:/ds_16.csv')
+    ds.visualize('', '', None, None)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 def test_dataset():

@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 from DataSet import DataSet
 from scipy.fft import *
+from tkinter import *
 import math
+import matplotlib.pyplot as plt
 import cmath
 import pywt
 import mysql.connector as msc
@@ -169,9 +171,44 @@ class Signatures(DataSet):
                 result.append(measure[i])
         return result, envelope
 
+    @staticmethod
+    def __restore_sequence(modulus, phase, frequences):
+        """
+        Восстанавливает исходную последовательность из гармоник после быстрого преобразования Фурье
+        :param modulus: list
+            Список модулей
+        :param phase: list
+            Список фаз
+        :param frequences: list
+            Список частот
+        :return: list
+            Исходная последовательность
 
+        """
+        eps = 1e-10
+        sampling_period = 0.005
+        rev_size = math.ceil(100 / frequences[0])
+        rev_fft = [0] * rev_size
 
-    def load_csv(self, path, p_type='Furie', num_of_harms=None):
+        for i in range(1, len(modulus)):
+            modulus[i] = 10 ** modulus[i] - eps
+            rev_fft[int(frequences[i])] = cmath.rect(modulus[i], phase[i])
+
+        fft_freq = rfftfreq(rev_size * 2 - 2, sampling_period)
+
+        fig, ax = plt.subplots(figsize=(5, 3))
+        ax.vlines(x=fft_freq[:17], ymin=0, ymax=np.abs(rev_fft)[:17], color=(0, 0, 0), linewidth=3)
+        # ax.plot(fft_freq[:25], np.abs(rev_fft)[:25], color = (0, 0, 0), linewidth = 3)
+        ax.set_xlabel('частота, Гц')
+        ax.set_ylabel('модуль значения БФП')
+        ax.grid()
+        plt.show()
+
+        res_fft = irfft(rev_fft, math.ceil(200 / frequences[0]))
+        res_fft[:] = [x + modulus[0] for x in res_fft]
+        return res_fft
+
+    def load_csv(self, path, p_type='Fourier', num_of_harms=None):
         """
         Загружает в data_table информацию из csv-файла по заданному пути или url
         см. pandas.read_csv()
@@ -369,3 +406,104 @@ class Signatures(DataSet):
                     raise ValueError('Invalid direction')
                 for column in res_data.columns:
                     self._data_table[column] = res_data[column]
+
+    def visualize(self, file_name, figures, row_index = None, user_id = None):
+        """
+
+        :param file_name:
+        :param figures:
+            'harmonics', 'curves', 'image', 'all'
+        :param row_index:
+        :param user_id:
+        :return:
+        """
+        if user_id is not None:
+            draw_sign = self._data_table.loc[self._data_table['user_id'] == user_id]
+            if row_index is not None:
+                draw_sign = draw_sign.iloc[row_index]
+            else:
+                draw_sign = draw_sign.iloc[0]
+        else:
+            draw_sign = self._data_table.iloc[0]
+        if self._p_type == 'Fourier':
+            names_modulus_X = []
+            names_phases_X = []
+            names_modulus_Y = []
+            names_phases_Y = []
+            names_modulus_Z = []
+            names_phases_Z = []
+
+            for i in range(self._number_of_harms):
+                names_modulus_X.append('X_diff0_module_' + str(i + 1))
+                names_phases_X.append('X_diff0_phase_' + str(i + 1))
+                names_modulus_Y.append('Y_diff0_module_' + str(i + 1))
+                names_phases_Y.append('Y_diff0_phase_' + str(i + 1))
+                names_modulus_Z.append('Z_diff0_module_' + str(i + 1))
+                names_phases_Z.append('Z_diff0_phase_' + str(i + 1))
+            modulus_X = []
+            phases_X = []
+            modulus_Y = []
+            phases_Y = []
+            modulus_Z = []
+            phases_Z = []
+            frequences_X = [draw_sign['frequency']]
+            frequences_Y = [draw_sign['frequency']]
+            frequences_Z = [draw_sign['frequency']]
+            for i in range( 1, self._number_of_harms):
+                frequences_X.append(i)
+                frequences_Y.append(i)
+                frequences_Z.append(i)
+            for i in names_modulus_X:
+                modulus_X.append(draw_sign[i])
+            for i in names_phases_X:
+                phases_X.append(draw_sign[i])
+            for i in names_modulus_Y:
+                modulus_Y.append(draw_sign[i])
+            for i in names_phases_Y:
+                phases_Y.append(draw_sign[i])
+            for i in names_modulus_Z:
+                modulus_Z.append(draw_sign[i])
+            for i in names_phases_Z:
+                phases_Z.append(draw_sign[i])
+            print(frequences_X)
+            X = self.__restore_sequence(modulus_X, phases_X, frequences_X)
+            Y = self.__restore_sequence(modulus_Y, phases_Y, frequences_Y)
+            Z = self.__restore_sequence(modulus_Z, phases_Z, frequences_Z)
+
+            fig, ax = plt.subplots()
+            ax.plot(X, color=(0, 0, 0), linewidth=3)
+            ax.set_xlabel('номер отсчета')
+            ax.set_ylabel('значение X')
+            ax.grid()
+            fig.set_figheight(3)
+            fig.set_figwidth(5)
+            plt.show()
+
+            fig, ax = plt.subplots()
+            ax.plot(Y, color=(0, 0, 0), linewidth=3)
+            ax.set_xlabel('номер отсчета')
+            ax.set_ylabel('значение Y')
+            ax.grid()
+            fig.set_figheight(3)
+            fig.set_figwidth(5)
+            plt.show()
+
+            fig, ax = plt.subplots()
+            ax.plot(Z, color=(0, 0, 0), linewidth=3)
+            ax.set_xlabel('номер отсчета')
+            ax.set_ylabel('значение Z')
+            ax.grid()
+            fig.set_figheight(3)
+            fig.set_figwidth(5)
+            plt.show()
+
+            root = Tk()  # Производим инициализацию нашего графического интерфейса
+            canvas = Canvas(root, width=700, height=600, bg='white')  # Инициализируем Canvas размером 300х300 пикселей
+            canvas.pack()  # Размещаем Canvas в окне нашего Tkinter-GUI
+            for i in range(len(X) - 1):
+                # print(i, ": " , X_df[i], "; ", Y_df[i])
+                if (Z[i] < 50):
+                    line = canvas.create_line((X[i] + 150), (Y[i] + 200), (X[i + 1] + 150), (Y[i + 1] + 200), width=2,
+                                              fill="black")
+            root.mainloop()
+            # todo сделать отрисовку не в окно, а в файлы
