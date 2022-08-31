@@ -16,7 +16,7 @@ if __name__ == '__main__':
     #ds.generate_from_database('localhost', 'root', '192837465564738291yashka', 16, 'Fourier', True)
     print(ds.get_df())
     #ds.save_csv('Z:/ds_16.csv')
-    ds.visualize('', '', None, None)
+    ds.visualize('Z:/image_test', None, None)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 def test_dataset():

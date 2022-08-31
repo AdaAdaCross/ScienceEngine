@@ -2,13 +2,13 @@ import pandas as pd
 import numpy as np
 from DataSet import DataSet
 from scipy.fft import *
-from tkinter import *
 import math
 import matplotlib.pyplot as plt
 import cmath
 import pywt
 import mysql.connector as msc
 import re
+from PIL import Image, ImageDraw
 
 
 class Signatures(DataSet):
@@ -39,6 +39,8 @@ class Signatures(DataSet):
         Генерирует датафрейм из базы данных sign_db с преобразованием данных по выбранному методу
     normalize(label_column, type_of_normalize, direction='column', columns=None)
         Нормализует данные исходного датафрейма в соотвествии с параметрами
+    visualize(file_name, row_index = None, user_id = None)
+        Сохраняет отрисованные изображения подписи, кривые X,Y,Z и их гармоники в отдельные файлы
     """
     def __init__(self):
         super().__init__()
@@ -172,7 +174,7 @@ class Signatures(DataSet):
         return result, envelope
 
     @staticmethod
-    def __restore_sequence(modulus, phase, frequences):
+    def __restore_sequence(modulus, phase, frequences, file_name):
         """
         Восстанавливает исходную последовательность из гармоник после быстрого преобразования Фурье
         :param modulus: list
@@ -196,13 +198,13 @@ class Signatures(DataSet):
 
         fft_freq = rfftfreq(rev_size * 2 - 2, sampling_period)
 
-        fig, ax = plt.subplots(figsize=(5, 3))
+        fig, ax = plt.subplots()
         ax.vlines(x=fft_freq[:17], ymin=0, ymax=np.abs(rev_fft)[:17], color=(0, 0, 0), linewidth=3)
         # ax.plot(fft_freq[:25], np.abs(rev_fft)[:25], color = (0, 0, 0), linewidth = 3)
         ax.set_xlabel('частота, Гц')
         ax.set_ylabel('модуль значения БФП')
         ax.grid()
-        plt.show()
+        plt.savefig(file_name+'_harmonics.png')
 
         res_fft = irfft(rev_fft, math.ceil(200 / frequences[0]))
         res_fft[:] = [x + modulus[0] for x in res_fft]
@@ -407,15 +409,16 @@ class Signatures(DataSet):
                 for column in res_data.columns:
                     self._data_table[column] = res_data[column]
 
-    def visualize(self, file_name, figures, row_index = None, user_id = None):
+    def visualize(self, file_name, row_index = None, user_id = None):
         """
-
-        :param file_name:
-        :param figures:
-            'harmonics', 'curves', 'image', 'all'
-        :param row_index:
-        :param user_id:
-        :return:
+        Сохраняет отрисованные изображения подписи, кривые X,Y,Z и их гармоники в отдельные файлы
+        :param file_name: str
+            Начало пути, по которому будут сохранены изображения
+        :param row_index: int, optional
+            Номер строки (от начала датасета или куска датасета заданного пользователя),
+            подпись из которой нужно отрисовать
+        :param user_id: int, optional
+            Идентификатор пользователя, подпись которого нужно отрисовать
         """
         if user_id is not None:
             draw_sign = self._data_table.loc[self._data_table['user_id'] == user_id]
@@ -425,6 +428,7 @@ class Signatures(DataSet):
                 draw_sign = draw_sign.iloc[0]
         else:
             draw_sign = self._data_table.iloc[0]
+
         if self._p_type == 'Fourier':
             names_modulus_X = []
             names_phases_X = []
@@ -466,44 +470,35 @@ class Signatures(DataSet):
             for i in names_phases_Z:
                 phases_Z.append(draw_sign[i])
             print(frequences_X)
-            X = self.__restore_sequence(modulus_X, phases_X, frequences_X)
-            Y = self.__restore_sequence(modulus_Y, phases_Y, frequences_Y)
-            Z = self.__restore_sequence(modulus_Z, phases_Z, frequences_Z)
+            X = self.__restore_sequence(modulus_X, phases_X, frequences_X, file_name+'_X')
+            Y = self.__restore_sequence(modulus_Y, phases_Y, frequences_Y, file_name+'_Y')
+            Z = self.__restore_sequence(modulus_Z, phases_Z, frequences_Z, file_name+'_Z')
 
             fig, ax = plt.subplots()
             ax.plot(X, color=(0, 0, 0), linewidth=3)
             ax.set_xlabel('номер отсчета')
             ax.set_ylabel('значение X')
             ax.grid()
-            fig.set_figheight(3)
-            fig.set_figwidth(5)
-            plt.show()
+            plt.savefig(file_name+'_X_curve.png')
 
             fig, ax = plt.subplots()
             ax.plot(Y, color=(0, 0, 0), linewidth=3)
             ax.set_xlabel('номер отсчета')
             ax.set_ylabel('значение Y')
             ax.grid()
-            fig.set_figheight(3)
-            fig.set_figwidth(5)
-            plt.show()
+            plt.savefig(file_name + '_Y_curve.png')
 
             fig, ax = plt.subplots()
             ax.plot(Z, color=(0, 0, 0), linewidth=3)
             ax.set_xlabel('номер отсчета')
             ax.set_ylabel('значение Z')
             ax.grid()
-            fig.set_figheight(3)
-            fig.set_figwidth(5)
-            plt.show()
+            plt.savefig(file_name+'_Z_curve.png')
 
-            root = Tk()  # Производим инициализацию нашего графического интерфейса
-            canvas = Canvas(root, width=700, height=600, bg='white')  # Инициализируем Canvas размером 300х300 пикселей
-            canvas.pack()  # Размещаем Canvas в окне нашего Tkinter-GUI
+            image1 = Image.new("RGB", (800, 600), (255, 255, 255))
+            draw = ImageDraw.Draw(image1)
+
             for i in range(len(X) - 1):
-                # print(i, ": " , X_df[i], "; ", Y_df[i])
-                if (Z[i] < 50):
-                    line = canvas.create_line((X[i] + 150), (Y[i] + 200), (X[i + 1] + 150), (Y[i + 1] + 200), width=2,
-                                              fill="black")
-            root.mainloop()
-            # todo сделать отрисовку не в окно, а в файлы
+                if Z[i] < 50:
+                    draw.line([(X[i] + 100), (Y[i] + 50), (X[i + 1] + 100), (Y[i + 1] + 50)], width=4, fill="black")
+            image1.save(file_name+'_figure.png')
