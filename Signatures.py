@@ -329,6 +329,7 @@ class Signatures(DataSet):
         elif par_type == 'Wavelet':
             params_data = [[]]
             offset = 0
+            orig_size = []
             for sign in signs_data:
                 params_data[offset] = []
                 for i in range(6):
@@ -344,6 +345,7 @@ class Signatures(DataSet):
                         params_data[offset].append(value)
                 params_data.append([])
                 offset = offset + 1
+                orig_size.append(len(sign[0]))
             params_data = params_data[:-1]
             # формирование заголовков
             header = []
@@ -355,6 +357,7 @@ class Signatures(DataSet):
             # сохранение в DataFrame
             self._data_table = pd.DataFrame(data=params_data, columns=header)
             self._data_table['user_id'] = sign_owners
+            self._data_table['orig_size'] = orig_size
             self._p_type = par_type
             self._number_of_harms = number_harms
         else:
@@ -502,3 +505,33 @@ class Signatures(DataSet):
                 if Z[i] < 50:
                     draw.line([(X[i] + 100), (Y[i] + 50), (X[i + 1] + 100), (Y[i + 1] + 50)], width=4, fill="black")
             image1.save(file_name+'_figure.png')
+        elif self._p_type == 'Wavelet':
+            restore = []
+            sign_size = draw_sign['orig_size']
+            for i in ['X', 'Y', 'Z']:
+                mask = i + r'_diff0_\d+'
+                list_columns = " ".join(draw_sign.index)
+                need_columns = re.findall(mask, list_columns)
+                sequence = draw_sign[need_columns]
+                perc = (self._number_of_harms / sign_size) * 100
+                x = list(range(int(sign_size)))
+                xp = x[::int(100.0/perc)]
+                index = xp[-1] + 1
+                while len(xp) > self._number_of_harms:
+                    xp.pop(int(len(xp) / 2))
+                while len(xp) < self._number_of_harms:
+                    xp.append(index)
+                    index = index + 1
+                sequence = np.interp(x, xp, sequence)
+                restore.append(sequence)
+            X = restore[0]
+            Y = restore[1]
+            Z = restore[2]
+            image1 = Image.new("RGB", (800, 600), (255, 255, 255))
+            draw = ImageDraw.Draw(image1)
+            for i in range(len(X) - 1):
+                if Z[i] < 50:
+                    draw.line([(X[i] + 100), (Y[i] + 50), (X[i + 1] + 100), (Y[i + 1] + 50)], width=4, fill="black")
+            image1.save(file_name + '_figure.png')
+        else:
+            ValueError('Unsupported parametrization type')

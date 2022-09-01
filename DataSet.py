@@ -301,6 +301,7 @@ class DataSet:
         :return: pandas.DataFrame
             Сформированный контейнер данных датасета на основе data_table
         """
+        # todo сделать выбор колонок по регулярному выражению как в get_train_data
         df_res = self._data_table.copy()
         if type_of_select == 'include':
             if is_index:
