@@ -25,10 +25,13 @@ class Signatures(DataSet):
     generated_indexes : list
         список индексов строк датафрема, которые были сгенерированы
         с помощью функции расширения датасета на основе случайной величины
-    p_type: str
+    p_type : str
         Содержит информацию о типе параметризации
     number_of_harms : int
         Содержит информацию о количестве гармоник
+    envelopes : list
+        Содержит список конвертов, рассчитанных для каждой колонки или строки
+        в формате [идентификатор колонки или строки, [среднее значение, стандартное отклонение]]
 
     Методы
     ----------
@@ -41,6 +44,8 @@ class Signatures(DataSet):
         Нормализует данные исходного датафрейма в соотвествии с параметрами
     visualize(file_name, row_index = None, user_id = None)
         Сохраняет отрисованные изображения подписи, кривые X,Y,Z и их гармоники в отдельные файлы
+    set_numpy_data(numpy_data, indexes=None, columns=None)
+        Заменить значения в заданных ячейках на значения из numpy.ndarray
     """
     def __init__(self):
         super().__init__()
@@ -412,7 +417,7 @@ class Signatures(DataSet):
                 for column in res_data.columns:
                     self._data_table[column] = res_data[column]
 
-    def visualize(self, file_name, row_index = None, user_id = None):
+    def visualize(self, file_name, row_index=None, user_id=None):
         """
         Сохраняет отрисованные изображения подписи, кривые X,Y,Z и их гармоники в отдельные файлы
         :param file_name: str
@@ -535,3 +540,55 @@ class Signatures(DataSet):
             image1.save(file_name + '_figure.png')
         else:
             ValueError('Unsupported parametrization type')
+
+    def set_numpy_data(self, numpy_data, indexes=None, columns=None) :
+        """
+        Заменить значения в заданных ячейках на значения из numpy.ndarray
+        :param numpy_data: numpy.ndarray
+            Контейнер, содержащий в себе значения, помещаемые в датасет
+        :param indexes: list[]
+            Контейнер, содержащий в себе в себе список индексов строк
+        :param columns: str, list[str], list[int]
+            Контейнер, содержащий в себе описание требуемых для замены колонок из датасета
+            Если задана как строка - описание в виде регулярного выражения, которому должны соответствовать
+                заголовки наименований колонок
+            Если как список - содержит список необходимых колонок
+        """
+        list_columns = []
+        list_rows = []
+        if columns is not None:
+            if type(columns) == str:
+                list_columns = " ".join(self._data_table.columns)
+                list_columns = re.findall(columns, list_columns)
+            elif type(columns) == list:
+                if type(columns[0]) == int:
+                    list_columns = self._data_table.columns[columns]
+                elif type(columns[0]) == str:
+                    list_columns = columns
+                else:
+                    raise TypeError('Invalid type of columns list')
+            else:
+                raise TypeError('Invalid type of columns')
+        else:
+            list_columns = self._data_table.columns
+        if indexes is not None:
+            list_rows = indexes
+        else:
+            list_rows = list(range(self._data_table.shape[0]))
+        if numpy_data.shape[0] != len(list_rows) or numpy_data.shape[1] != len(list_columns):
+            raise ValueError('Incorrect array size of insertion data')
+        for i in range(len(list_columns)):
+            for j in range(len(list_rows)):
+                self.set_value(list_columns[i], list_rows[j], numpy_data[j][i])
+
+    def get_info(self):
+        """
+        Возвращает
+        :return:
+        """
+        info_str1 = super().get_info()
+        info_str2 = '4) type of parametrization: ' + self._p_type + '\n'
+        info_str2 += '5) number of harmonics: ' + str(self._number_of_harms) + '\n'
+        print(info_str2)
+        return info_str1 + info_str2
+#todo параметры для вывода информации (например, все ли колонки выводить)
