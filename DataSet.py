@@ -22,6 +22,9 @@ class DataSet:
     generated_indexes : list
         список индексов строк датафрема, которые были сгенерированы
         с помощью функции расширения датасета на основе случайной величины
+    normalization_list : list
+        контейнер, хранящий тип нормализации для каждой колонки
+        в формате [идентификатор колонки, тип нормализации, направление]
 
     Методы
     ----------
@@ -50,7 +53,7 @@ class DataSet:
         Добавляет колонку к датафрейму
     remove_columns(columns_names, is_index=False)
         Удаляет заданные колонки
-    get_columns(columns_names, type_of_select, is_index=False)
+    get_columns(columns_names, type_of_select)
         Возвращает датафрейм, содержащий выбранные колонки
     get_value(column_name, row_index)
         Возвращает значение в указанной ячейке
@@ -75,6 +78,7 @@ class DataSet:
     def __init__(self):
         self._data_table = pd.DataFrame()
         self._generated_indexes = []
+        self._normalization_list = []
 
     @staticmethod
     def __normalize_by_type(list_of_data, type_of_normalize):
@@ -285,35 +289,41 @@ class DataSet:
         else:
             self._data_table = self._data_table.drop(self._data_table.columns[columns_names], axis=1)
 
-    def get_columns(self, columns_names, type_of_select, is_index=False):
+    def get_columns(self, columns_names, type_of_select):
         """
         Возвращает датафрейм, содержащий выбранные колонки
-        :param columns_names: list
-             Список выбранных названий или индексов колонок
+        :param columns_names: str, list[str], list[int]
+            Контейнер, содержащий в себе описание требуемых колонок из датасета
+            Если задана как строка - описание в виде регулярного выражения, которому должны соответствовать
+                заголовки наименований колонок
+            Если как список - содержит список необходимых колонок
         :param type_of_select: str
             Параметр выбора строк из датасета:
             'include' - вернуть только заданные столбцы,
-            'exclude' - вернуть датасет без заданных столбцы,
-        :param is_index: bool
-            Параметр выбора колонок:
-            True - по индексам,
-            False - по названиям
+            'exclude' - вернуть датасет без заданных столбцы
         :return: pandas.DataFrame
             Сформированный контейнер данных датасета на основе data_table
         """
-        # todo сделать выбор колонок по регулярному выражению как в get_train_data
         df_res = self._data_table.copy()
-        if type_of_select == 'include':
-            if is_index:
-                df_res = df_res[df_res.columns[columns_names]]
+        selected_columns = []
+        if type(columns_names) == str:
+            list_columns = " ".join(df_res.columns)
+            selected_columns = re.findall(columns_names, list_columns)
+        elif type(columns_names) == list:
+            if type(columns_names[0]) == int:
+                selected_columns = res_data.columns[columns_names]
+            elif type(columns_names[0]) == str:
+                selected_columns = columns_names
             else:
-                df_res = df_res[columns_names]
+                raise TypeError('Invalid type of data_columns list')
+        else:
+            raise TypeError('Invalid type of data_columns')
+
+        if type_of_select == 'include':
+            df_res = df_res[selected_columns]
             return df_res
         if type_of_select == 'exclude':
-            if is_index:
-                df_res = df_res.drop(df_res.columns[columns_names], axis=1)
-            else:
-                df_res = df_res.drop(columns_names, axis=1)
+            df_res = df_res.drop(selected_columns, axis=1)
             return df_res
         raise ValueError('Invalid type of select')
 
@@ -365,7 +375,7 @@ class DataSet:
             'up' - dataframes будет присоединен выше относительно основного
             'down' - dataframes будет присоединен снизу относительно основного
         """
-        if type(dataframes) == pandas.DataFrame:
+        if type(dataframes) == pd.DataFrame:
             if direction == 'left':
                 dataframes[self._data_table.columns] = self._data_table.values
                 self._data_table = dataframes
@@ -565,7 +575,7 @@ class DataSet:
             Если как список - содержит список необходимых колонок
         """
         res_data = self._data_table.copy()
-        res_data = res_data.drop(label_column, axis = 1)
+        res_data = res_data.drop(label_column, axis=1)
         if columns is not None:
             if type(columns) == str:
                 list_columns = " ".join(res_data.columns)
@@ -590,8 +600,9 @@ class DataSet:
             raise ValueError('Invalid direction')
         for column in res_data.columns:
             self._data_table[column] = res_data[column]
+            self._normalization_list.append([column, type_of_normalize, direction])
 
-    def get_info(self):
+    def get_info(self, output_name, column_info=False, normalization_info=False):
         """
         Выводит информацию о датасете
         :return: str
@@ -607,4 +618,5 @@ class DataSet:
             info_str += '\n'
         print(info_str)
         return info_str
+
         # todo сохранять матрицу с наименованиями нормализаций для каждой ячейки

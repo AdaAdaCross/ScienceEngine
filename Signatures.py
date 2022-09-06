@@ -591,4 +591,6 @@ class Signatures(DataSet):
         info_str2 += '5) number of harmonics: ' + str(self._number_of_harms) + '\n'
         print(info_str2)
         return info_str1 + info_str2
-#todo параметры для вывода информации (например, все ли колонки выводить)
+
+#todo параметры для вывода информации (например, все ли колонки выводить) P.S. сохранять конверты в файл
+# todo сохранять нормаоизацию в файл
