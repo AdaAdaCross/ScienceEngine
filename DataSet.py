@@ -165,7 +165,7 @@ class DataSet:
         :param path: str
             Путь или URL до csv-файла данных
         """
-        self._data_table.to_csv(path)
+        self._data_table.to_csv(path, index=False)
 
     def get_rows(self, type_of_select='include', indexes=None):
         """

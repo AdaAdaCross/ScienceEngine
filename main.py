@@ -8,6 +8,13 @@ import pandas as pd
 from DataSet import DataSet
 from Signatures import Signatures
 
+import random as rnd
+import matplotlib.pyplot as plt
+import math
+
+from docx import Document
+from docx.shared import Pt
+
 # Press the green button in the gutter to run the script.
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 def test_dataset():
@@ -55,4 +62,13 @@ def test_Signature():
 
 
 if __name__ == '__main__':
-    test_dataset()
+    document = Document()
+    #print(document.styles['Normal'])
+    #print(document.styles['Normal'].font.name)
+    #print(document.styles['Normal'].font.size)
+
+    document.styles['Normal'].font.name = 'Times New Roman'
+    document.styles['Normal'].font.size = Pt(14)
+
+    p = document.add_paragraph('Сьешь еще этих мягких французских булок и выпей чаю!')
+    document.save('Z:/test.docx')
