@@ -368,7 +368,7 @@ class Signatures(DataSet):
         else:
             raise ValueError('Invalid type of parametrisation')
 
-    def normalize(self, label_column, type_of_normalize, direction='column', columns=None):
+    def normalize(self, label_column, type_of_normalize, direction='column', columns=None, metadata_save_path=None):
         """
         Нормализует данные исходного датафрейма в соотвествии с параметрами
         Данный метод расширяет функионал базового метода класса DataSet
@@ -380,7 +380,9 @@ class Signatures(DataSet):
             Целое число после нижнего подчеркивания указывает разрядность генерируемых конвертов
             Результирующие значения будут представлены в виде [-%d, ..., -1, 0, 1, ..., %d]
             см. https://ieeexplore.ieee.org/abstract/document/7840688
-
+        :param metadata_save_path: str, optional
+            Строка, содержащая путь до места сохранения информации, уничтожаемой при нормализации, но позволяющей
+            восстановить исходные данные подписи после нормализации
         """
         if not re.search(r'envelopes_\d+', type_of_normalize):
             super().normalize(label_column, type_of_normalize, direction, columns)
@@ -416,6 +418,14 @@ class Signatures(DataSet):
                     raise ValueError('Invalid direction')
                 for column in res_data.columns:
                     self._data_table[column] = res_data[column]
+            if metadata_save_path is not None:
+                list_trans_envelopes = list(map(list, zip(*self._envelopes)))
+                labels_list = list_trans_envelopes[0]
+                data_list = list(map(list, zip(*list_trans_envelopes[1])))
+                df_for_clean = pd.DataFrame(data=data_list, columns=labels_list)
+                df_for_clean.to_csv(metadata_save_path, index=False)
+
+
 
     def visualize(self, file_name, row_index=None, user_id=None):
         """
@@ -581,15 +591,21 @@ class Signatures(DataSet):
             for j in range(len(list_rows)):
                 self.set_value(list_columns[i], list_rows[j], numpy_data[j][i])
 
-    def get_info(self):
+    def get_info(self, envelopes_save_path=None):
         """
-        Возвращает
-        :return:
+        Возвращает строку с информацией о подписи
+        :return: str
+            Строка с информацией о подписи
         """
         info_str1 = super().get_info()
         info_str2 = '4) type of parametrization: ' + self._p_type + '\n'
         info_str2 += '5) number of harmonics: ' + str(self._number_of_harms) + '\n'
         print(info_str2)
+
+        if envelopes_save_path is not None:
+
+            self._envelopes
+
         return info_str1 + info_str2
 
 #todo параметры для вывода информации (например, все ли колонки выводить) P.S. сохранять конверты в файл

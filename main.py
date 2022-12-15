@@ -62,13 +62,10 @@ def test_Signature():
 
 
 if __name__ == '__main__':
-    document = Document()
-    #print(document.styles['Normal'])
-    #print(document.styles['Normal'].font.name)
-    #print(document.styles['Normal'].font.size)
+    ds = Signatures()
+    ds.load_csv('Z:/ds_Wavelet_80.csv', 'Wavelet', num_of_harms=80)
+    ds.normalize('user_id', 'envelopes_2', 'column', r'X_diff0_\d{1,2}', metadata_save_path='Z:/envelopes.csv')
 
-    document.styles['Normal'].font.name = 'Times New Roman'
-    document.styles['Normal'].font.size = Pt(14)
 
-    p = document.add_paragraph('Сьешь еще этих мягких французских булок и выпей чаю!')
-    document.save('Z:/test.docx')
+
+
