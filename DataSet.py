@@ -91,20 +91,20 @@ class DataSet:
             'max' - нормализация относительно максимума
             'linear' - линейная нормализация
             'statistical' - статистическая нормализация
-        :return: list
-            Возвращает лист нормализованных значений
+        :return: list, list
+            Возвращает лист нормализованных значений и лист метаданных использованной нормализации
         """
         if type_of_normalize == 'max':
             norm = [float(i) / max(list_of_data) for i in list_of_data]
-            return norm
+            return norm, max(list_of_data)
         if type_of_normalize == 'linear':
             norm = [(float(i) - min(list_of_data)) / (max(list_of_data) - min(list_of_data)) for i in list_of_data]
-            return norm
+            return norm, [max(list_of_data), min(list_of_data)]
         if type_of_normalize == 'statistical':
             aver = np.mean(list_of_data, axis=0)
             sigma = np.std(list_of_data, axis=0)
             norm = [((float(i) - aver) / sigma) for i in list_of_data]
-            return norm
+            return norm, [aver, sigma]
         raise ValueError('Invalid type of normalize')
 
     def get_df(self):
@@ -554,7 +554,7 @@ class DataSet:
         self._data_table = self._data_table.replace(before, after)
         return True
 
-    def normalize(self, label_column, type_of_normalize, direction, columns=None):
+    def normalize(self, label_column, type_of_normalize, direction, columns=None, metadata_save_path=None):
         """
         Нормализует данные исходного датафрейма в соотвествии с параметрами
         :param label_column: str
@@ -563,7 +563,7 @@ class DataSet:
             Выбор типа нормализации:
             'max' - нормализация относительно максимума
             'linear' - линейная нормализация
-            'statistical' - статистическая нормализация
+            'statistical' - статистическая Z-нормализация
         :param direction: str, optional
             Выбор направления нормализации:
             'row' - нормализовать по-строчно
@@ -573,6 +573,9 @@ class DataSet:
             Если задана как строка - описание в виде реуглярного выражения, которому должны соответствовать
                 заголовки наименований колонок
             Если как список - содержит список необходимых колонок
+        :param metadata_save_path: str, optional
+            Строка, содержащая путь до места сохранения информации, уничтожаемой при нормализации, но позволяющей
+            восстановить исходные данные подписи после нормализации
         """
         res_data = self._data_table.copy()
         res_data = res_data.drop(label_column, axis=1)
@@ -592,17 +595,27 @@ class DataSet:
                 raise TypeError('Invalid type of columns')
         if direction == 'row':
             for index, row in res_data.iterrows():
-                res_data.iloc[index] = DataSet.__normalize_by_type(row.values, type_of_normalize)
+                res_data.iloc[index], list_norm_param = DataSet.__normalize_by_type(row.values, type_of_normalize)
         elif direction == 'column':
             for column in res_data:
-                res_data[column] = DataSet.__normalize_by_type(res_data[column].values, type_of_normalize)
+                res_data[column], list_norm_param = DataSet.__normalize_by_type(res_data[column].values, type_of_normalize)
         else:
             raise ValueError('Invalid direction')
         for column in res_data.columns:
             self._data_table[column] = res_data[column]
-            self._normalization_list.append([column, type_of_normalize, direction])
+            self._normalization_list.append([column, type_of_normalize, direction]+list_norm_param)
 
-    def get_info(self, output_name, column_info=False, normalization_info=False):
+        if metadata_save_path is not None:
+            list_trans_norm = list(map(list, zip(*self._normalization_list)))
+            print(list_trans_norm)
+            labels_list = list_trans_norm[0]
+            list_trans_norm.pop(0)
+            data_list = list_trans_norm
+            df_for_clean = pd.DataFrame(data = data_list, columns=labels_list)
+            df_for_clean.to_csv(metadata_save_path, index=False)
+
+
+    def get_info(self, column_info=False, normalization_info=False):
         """
         Выводит информацию о датасете
         :return: str
@@ -610,12 +623,13 @@ class DataSet:
         """
         info_str = 'Dataset info:\n1) shape ' + str(self._data_table.shape) + '\n'
         info_str += '2) number of generated rows ' + str(len(self._generated_indexes)) + '\n'
-        info_str += '3) types of values in columns:\n'
-        for column in self._data_table.columns:
-            info_str += '\t' + column + ' : ' + str(type(self._data_table[column].values[0]))
-            if np.isnan(self._data_table[column].values).any():
-                info_str += ' (contains NaN)'
-            info_str += '\n'
+        if column_info==True:
+            info_str += '3) types of values in columns:\n'
+            for column in self._data_table.columns:
+                info_str += '\t' + column + ' : ' + str(type(self._data_table[column].values[0]))
+                if np.isnan(self._data_table[column].values).any():
+                    info_str += ' (contains NaN)'
+                info_str += '\n'
         print(info_str)
         return info_str
 

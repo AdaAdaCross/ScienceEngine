@@ -385,7 +385,7 @@ class Signatures(DataSet):
             восстановить исходные данные подписи после нормализации
         """
         if not re.search(r'envelopes_\d+', type_of_normalize):
-            super().normalize(label_column, type_of_normalize, direction, columns)
+            super().normalize(label_column, type_of_normalize, direction, columns, metadata_save_path)
         else:
             res_data = self._data_table.copy()
             res_data = res_data.drop(label_column, axis=1)
@@ -591,7 +591,7 @@ class Signatures(DataSet):
             for j in range(len(list_rows)):
                 self.set_value(list_columns[i], list_rows[j], numpy_data[j][i])
 
-    def get_info(self, envelopes_save_path=None):
+    def get_info(self):
         """
         Возвращает строку с информацией о подписи
         :return: str
@@ -602,11 +602,6 @@ class Signatures(DataSet):
         info_str2 += '5) number of harmonics: ' + str(self._number_of_harms) + '\n'
         print(info_str2)
 
-        if envelopes_save_path is not None:
-
-            self._envelopes
-
         return info_str1 + info_str2
 
-#todo параметры для вывода информации (например, все ли колонки выводить) P.S. сохранять конверты в файл
-# todo сохранять нормаоизацию в файл
+#todo параметры для вывода информации (например, все ли колонки выводить)
