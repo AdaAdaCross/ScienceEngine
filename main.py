@@ -7,6 +7,7 @@ import pandas as pd
 
 from DataSet import DataSet
 from Signatures import Signatures
+from Classifier import *
 
 import random as rnd
 import matplotlib.pyplot as plt
@@ -62,10 +63,13 @@ def test_Signature():
 
 
 if __name__ == '__main__':
-    ds = Signatures()
-    ds.load_csv('Z:/ds_Wavelet_80.csv', 'Wavelet', num_of_harms=80)
-    ds.get_info()
-    #ds.normalize('user_id', 'linear', 'column', r'X_diff0_\d{1,2}', metadata_save_path='Z:/linear.csv')
+    classifier = Classifier()
+    classifier.init_classifier_from_file('Templates/yaml_example.yaml')
+
+    # ds = Signatures()
+    # ds.load_csv('Z:/ds_Wavelet_80.csv', 'Wavelet', num_of_harms=80)
+    # ds.get_info()
+    # ds.normalize('user_id', 'linear', 'column', r'X_diff0_\d{1,2}', metadata_save_path='Z:/linear.csv')
 
 
 
