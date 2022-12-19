@@ -61,7 +61,6 @@ def test_Signature():
     # ds.visualize('Z:/image_test', None, None)
     ds.get_info()
 
-
 if __name__ == '__main__':
     classifier = Classifier()
     classifier.init_classifier_from_file('Templates/yaml_example.yaml')
