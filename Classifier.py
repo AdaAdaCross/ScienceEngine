@@ -30,6 +30,7 @@ class Classifier:
     """
     Classifier
     ----------
+    Виртуальный базовый класс.
     Родительский класс для описания классификаторов на основе как нейронных сетей, так и классических алгоритмов
     классификации
     Содержит базовые атрибуты и функции для работы с моделями классификаторов
@@ -56,7 +57,30 @@ class Classifier:
 
     Методы
     ----------
-
+    init_classifier(classifier_description, learning_description=None):
+        Инициализирует модель классификатора и свойства для его обучения
+    init_classifier_from_file(path_to_classifier_descr: str, path_to_learning_descr: str = None):
+        Инициализирует модель классификатора и свойства для его обучения, считывая параметры из заданных файлов
+    load_model(self, path: str):
+        Загружает веса обученной модели в подготовленный классификатор
+    learn(self, data, labels, train_test_ratio=0.7,save_learn_history_path=None, verbose=None, is_onehot_encoded=True):
+        Запускает процесс обучения модели классификатора
+    evaluate(self, data, labels, is_onehot_encoded=True):
+        Тестирует обученную или загруженную модель классификатора на заданном наборе данных
+    get_stats_error(self, data, labels, friend_users, alien_users, is_onehot_encoded=True):
+        Вычисляет статистические ошибки, получаемые обученной моделью классификатора на заданном наборе данных
+    get_prediction(self, data, is_onehot_encoded=True):
+        Возвращает предсказание обученного классификатора для заданного набора данных
+    get_current_state(self):
+        Возвращает текущее внутреннее состояние классификатора
+    get_summary(self, to_stdio=False):
+        Возвращает текущую структуру классификатора (используемые функции, слои, их характеристики и т.п.)
+    save_model(self, path: str):
+        Сохраняет веса текущей модели классификатора в файл
+    save_classifier_parameters(self, path: str):
+        Сохраняет описание текущей модели классификатора в файл в формате YAML
+    save_learning_parameters(self, path: str):
+        Сохраняет параметры, с которыми текущая модель классификатора обучалась в файл в формате YAML
     """
 
     def __init__(self):
@@ -84,7 +108,6 @@ class Classifier:
 
     def init_classifier_from_file(self, path_to_classifier_descr: str, path_to_learning_descr: str = None):
         """
-        Виртуальный метод.
         Инициализирует модель классификатора и свойства для его обучения,
         считывая параметры из заданных файлов
         :param path_to_classifier_descr: str
@@ -100,9 +123,18 @@ class Classifier:
         # недокументированное использование функции init_classifier: вместо текста передаем открытые файлы,
         # реализация библиотеки yaml позволяет использовать ее таким образом
         self.init_classifier(class_stream, learn_stream)
-        print(self._classifier_parameters)
 
-    def learn(self, data, labels, train_test_ratio=0.7, verbose=None, is_onehot_encoded=True):
+    def load_model(self, path: str):
+        """
+        Виртуальный метод.
+        Загружает веса обученной модели в подготовленный классификатор
+        :param path: str
+            Путь к сохраненным весам
+        """
+        if self._current_state == ClassifierStates.NOT_INITIALIZED:
+            raise AttributeError('Model is not ready for loading weights')
+
+    def learn(self, data, labels, train_test_ratio=0.7, save_learn_history_path=None, verbose=None, is_onehot_encoded=True):
         """
         Виртуальный метод.
         Запускает процесс обучения модели классификатора
@@ -113,6 +145,8 @@ class Classifier:
         :param train_test_ratio: float
             отношение размера тренировочного набора к размеру тестового набора,
             на которые будут поделены исходные данные перед обучением
+        :param save_learn_history_path: str
+            Строка, содержащая путь до файла с логами процесса обучения
         :param verbose: str
             Указывает будет ли выводиться информация о прогрессе обучения и если да, то в каком количестве
             Возможные варианты вывода:
@@ -167,6 +201,7 @@ class Classifier:
 
     def get_prediction(self, data, is_onehot_encoded=True):
         """
+        Виртуальный метод.
         Возвращает предсказание обученного классификатора для заданного набора данных
         :param data: np.array
             Данные для предсказания
@@ -178,3 +213,56 @@ class Classifier:
         if self._current_state != ClassifierStates.MODEL_READY:
             raise AttributeError('Model is not ready for data classification')
         return [0] * len(data)
+
+    def get_current_state(self):
+        """
+        Возвращает текущее внутреннее состояние классификатора
+        :return: ClassifierStates
+            Состояние классификатора
+        """
+        return self._current_state
+
+    def get_summary(self, to_stdio=False):
+        """
+        Виртуальный метод.
+        Возвращает текущую структуру классификатора
+        (используемые функции, слои, их характеристики и т.п.)
+        :param to_stdio: bool
+            Указывает, выводить ли результат работы функции в консоль
+        :return: str
+            Описание структуры классификатора
+        """
+        # todo возможно добавить графическую визуализацию классификатора
+        if (to_stdio):
+            print('Not implemented')
+        raise NotImplementedError()
+
+    def save_model(self, path: str):
+        """
+        Виртуальный метод.
+        Сохраняет веса текущей модели классификатора в файл
+        :param path: str, pathlike
+            Путь к файлу для сохранения весов модели
+        """
+        if self._current_state != ClassifierStates.MODEL_READY:
+            raise AttributeError('Models weights are not ready for saving')
+
+    def save_classifier_parameters(self, path: str):
+        """
+        Виртуальный метод.
+        Сохраняет описание текущей модели классификатора в файл в формате YAML
+        :param path:
+            Путь к файлу для сохранения описания модели
+        """
+        if self._current_state == ClassifierStates.NOT_INITIALIZED:
+            raise AttributeError('Model is not ready for saving')
+
+    def save_learning_parameters(self, path: str):
+        """
+        Виртуальный метод.
+        Сохраняет параметры, с которыми текущая модель классификатора обучалась в файл в формате YAML
+        :param path:
+            Путь к файлу для сохранения параметров обучения модели
+        """
+        if self._current_state != ClassifierStates.MODEL_READY:
+            raise AttributeError('Models params are not ready for saving')

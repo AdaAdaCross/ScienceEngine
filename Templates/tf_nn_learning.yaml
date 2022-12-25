@@ -1,0 +1,6 @@
+loss: categorical_crossentropy
+optimizer: adam
+metrics:
+  - categorical_accuracy
+  - loss
+epochs: 1000

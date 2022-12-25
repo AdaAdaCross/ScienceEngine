@@ -7,7 +7,7 @@ import pandas as pd
 
 from DataSet import DataSet
 from Signatures import Signatures
-from Classifier import *
+from TensorFlowNN import *
 
 import random as rnd
 import matplotlib.pyplot as plt
@@ -62,8 +62,9 @@ def test_Signature():
     ds.get_info()
 
 if __name__ == '__main__':
-    classifier = Classifier()
-    classifier.init_classifier_from_file('Templates/yaml_example.yaml')
+    tfnn = TensorFlowNN()
+    tfnn.init_classifier_from_file('Templates/tf_nn_model.yaml', path_to_learning_descr='Templates/tf_nn_learning.yaml')
+    tfnn.add_layer('Dense', units=300, activation='relu')
 
     # ds = Signatures()
     # ds.load_csv('Z:/ds_Wavelet_80.csv', 'Wavelet', num_of_harms=80)
