@@ -458,13 +458,13 @@ class DataSet:
         X_train = X_train.drop(columns=label_column)
         Y_test = X_test[label_column]
         X_test = X_test.drop(columns=label_column)
+        Y_test = Y_test.to_numpy()
+        Y_train = Y_train.to_numpy()
         if is_onehotenc:
             Y_train = to_categorical(Y_train)
             Y_test = to_categorical(Y_test)
         X_train = X_train.to_numpy()
         X_test = X_test.to_numpy()
-        Y_test = Y_test.to_numpy()
-        Y_train = Y_train.to_numpy()
         if data_shape is not None:
             data_shape.insert(0, X_train.shape[0])
             X_train = X_train.reshape(data_shape)

@@ -1,6 +1,8 @@
-loss: categorical_crossentropy
-optimizer: adam
-metrics:
-  - categorical_accuracy
-  - loss
-epochs: 1000
+compile_params:
+  loss: categorical_crossentropy
+  optimizer: adam
+  metrics:
+    - accuracy
+    - categorical_crossentropy
+fit_params:
+  epochs: 10

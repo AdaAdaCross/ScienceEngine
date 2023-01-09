@@ -6,7 +6,7 @@ config:
     config:
       batch_input_shape:
       - null
-      - 144
+      - 480
       dtype: float32
       name: input_layer
       ragged: false
@@ -29,7 +29,7 @@ config:
       kernel_regularizer: null
       name: hidden_layer
       trainable: true
-      units: 30
+      units: 240
       use_bias: true
   - class_name: Dense
     config:

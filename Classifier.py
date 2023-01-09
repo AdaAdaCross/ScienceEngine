@@ -156,9 +156,9 @@ class Classifier:
         :param is_onehot_encoded: bool
             Указывает приведены ли метки к OneHotEncoded виду
         """
-        train_data, test_data, test_data, test_labels = train_test_split(data, labels, train_size=train_test_ratio)
+        train_data, test_data, train_labels, test_labels = train_test_split(data, labels, train_size=train_test_ratio)
         # возврат разбитых обучающих и тестовых данных для использования в дочерних классах
-        return train_data, test_data, test_data, test_labels
+        return train_data, test_data, train_labels, test_labels
 
     def evaluate(self, data, labels, is_onehot_encoded=True):
         """
